@@ -1,0 +1,26 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    
+    <item android:id="@+id/action_search"
+          android:icon="@android:drawable/ic_menu_search"
+          android:orderInCategory="100"
+          android:title="@string/search_button_title"
+          android:showAsAction="always" />
+    
+    <item android:id="@+id/action_visit"
+          android:icon="@drawable/ic_launcher"
+          android:orderInCategory="100"
+          android:title="@string/visit_button_title"
+          android:showAsAction="always|withText" />
+    
+    <item android:id="@+id/action_visit2"
+          android:icon="@drawable/ic_launcher"
+          android:orderInCategory="100"
+          android:title="@string/visit_button_title"
+          android:showAsAction="never" />
+    <item
+        android:id="@+id/action_settings"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="@string/settings_title"/>
+
+</menu>
