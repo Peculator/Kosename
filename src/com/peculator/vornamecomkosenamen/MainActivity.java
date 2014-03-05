@@ -17,24 +17,32 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
+import android.provider.ContactsContract;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.database.Cursor;
+import android.support.v4.view.MenuItemCompat;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.View.OnFocusChangeListener;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
+import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.GridView;
+import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
@@ -44,7 +52,7 @@ public class MainActivity extends Activity {
 	// TODOs
 	// Offline-Mode bzw. Suchergebnisse offline speichern (auf jeden Fall die
 	// Favoriten)
-	// Telefonbuch durchsuchen
+	// Telefonbuch durchsuchen //
 	// Seite besuchen - Name muss noch überprüft werden
 	// Wartesymbol
 	// Liste/Grid (zu costum grid)//
@@ -57,10 +65,13 @@ public class MainActivity extends Activity {
 	// HTML-Code ersetzen (wird im moment entfernt)/
 	// Case-sensitivity bei der vorname.com suche
 
+	private static final CursorAdapter Textadapter = null;
+	
 	public static String name = "";
 	EditText search;
 	public final LinkedList<String> resultList = new LinkedList<String>();
 	public final LinkedList<Boolean> resultSelected = new LinkedList<Boolean>();
+	public AutoCompleteTextView textView;
 	private GridView gridView;
 	MyAdapter adapter;
 	private boolean vertical = true;
@@ -144,7 +155,6 @@ public class MainActivity extends Activity {
 		ActionBar actionBar = getActionBar();
 		// add the custom view to the action bar
 		actionBar.setCustomView(R.layout.actionbar_view);
-
 		setContentView(R.layout.activity_main);
 
 		gridView = (GridView) findViewById(R.id.grid);
@@ -160,17 +170,49 @@ public class MainActivity extends Activity {
 						: (String) getResources()
 								.getString(R.string.adding_fav);
 
-				Toast.makeText(getApplicationContext(),
-						((TextView) v.findViewById(R.id.text)).getText() + message,
-						Toast.LENGTH_SHORT).show();
+				Toast.makeText(
+						getApplicationContext(),
+						((TextView) v.findViewById(R.id.text)).getText()
+								+ message, Toast.LENGTH_SHORT).show();
 				adapter.selected.set(position, !adapter.selected.get(position));
 				adapter.notifyDataSetChanged();
 			}
 		});
 
-		search = (EditText) actionBar.getCustomView().findViewById(
+		View customView = actionBar.getCustomView().findViewById(
 				R.id.searchfield);
-		search.setText("Sven");
+		
+		search = (EditText) customView ;
+
+		// Get all Contacts
+		Cursor phones = getContentResolver().query(
+				ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, null,
+				null, null);
+		LinkedList<String> myContacts = new LinkedList<String>();
+		while (phones.moveToNext()) {
+			myContacts
+					.add(phones.getString(phones
+							.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)));
+		}
+		phones.close();
+
+		String[] names = listToArray(myContacts);
+		ArrayAdapter<String> textAdapter = new ArrayAdapter<String>(this,
+				android.R.layout.simple_list_item_1, names);
+		textView = (AutoCompleteTextView) customView;
+		textView.setThreshold(0);
+		textView.setOnTouchListener(new View.OnTouchListener() {
+			
+			@Override
+			public boolean onTouch(View v, MotionEvent event) {
+				textView.showDropDown();
+				return false;
+			}
+		});
+		
+		
+		textView.setAdapter(textAdapter);
+		
 		search.setOnEditorActionListener(new OnEditorActionListener() {
 
 			@Override
