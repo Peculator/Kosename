@@ -7,10 +7,8 @@ import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
@@ -28,15 +26,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.database.Cursor;
-import android.support.v4.view.MenuItemCompat;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.View.OnFocusChangeListener;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
@@ -46,7 +41,6 @@ import android.widget.AutoCompleteTextView;
 import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.GridView;
-import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
@@ -81,6 +75,8 @@ public class MainActivity extends Activity {
 	private MyAdapter adapter;
 	private boolean vertical = true;
 
+	private final LinkedList<String> currentFavourites = new LinkedList<String>();
+	private final LinkedList<String> currentFavouritesNames = new LinkedList<String>();
 	public static final String PREFS_NAME = "MyKosenamePrefsFile";
 
 	@Override
@@ -109,12 +105,12 @@ public class MainActivity extends Activity {
 				gridView.setNumColumns(3);
 			}
 
-			Collections.sort(resultList, new Comparator<String>() {
-				@Override
-				public int compare(String o1, String o2) {
-					return o1.compareToIgnoreCase(o2);
-				}
-			});
+			// Collections.sort(resultList, new Comparator<String>() {
+			// @Override
+			// public int compare(String o1, String o2) {
+			// return o1.compareToIgnoreCase(o2);
+			// }
+			// });
 
 			adapter.names = resultList;
 			adapter.selected = resultSelected;
@@ -155,6 +151,7 @@ public class MainActivity extends Activity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// super.onCreate(savedInstanceState);
+		//clearSettings();
 
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.main, menu);
@@ -236,11 +233,6 @@ public class MainActivity extends Activity {
 						&& (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
 					InputMethodManager in = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 
-					// NOTE: In the author's example, he uses an identifier
-					// called searchBar. If setting this code on your EditText
-					// then use v.getWindowToken() as a reference to your
-					// EditText is passed into this callback as a TextView
-
 					in.hideSoftInputFromWindow(
 							search.getApplicationWindowToken(),
 							InputMethodManager.HIDE_NOT_ALWAYS);
@@ -261,7 +253,11 @@ public class MainActivity extends Activity {
 
 		while (it.hasNext()) {
 			Map.Entry pairs = (Map.Entry) it.next();
-			Log.i("my", pairs.getKey() + " = " + pairs.getValue());
+			currentFavourites.add(pairs.getKey().toString().replace(";", ""));
+			currentFavouritesNames.add(pairs.getValue().toString()
+					.replace(";", ""));
+			Log.i("my", pairs.getKey().toString() + " : "
+					+ pairs.getValue().toString());
 			it.remove(); // avoids a ConcurrentModificationException
 		}
 
@@ -269,53 +265,42 @@ public class MainActivity extends Activity {
 	}
 
 	protected void addFavorite(int position) {
+
+		if(!currentFavourites.contains(search.getText().toString())){
+			currentFavourites.add(search.getText().toString());
+		}
+		currentFavouritesNames.add(gridView.getAdapter().getItem(position)
+				.toString());
+		storeData();
+	}
+	protected void removeFavorite(int position) {
+		currentFavouritesNames.remove(gridView.getAdapter().getItem(position)
+				.toString());
+		storeData();
+	}
+	
+	private void clearSettings(){
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 		SharedPreferences.Editor editor = settings.edit();
-
-		String strKey = search.getText().toString();
-		String strValue;
-
-		if (settings.contains(strKey)) {
-			strValue = settings.getString(strKey, "null").concat(";")
-					.concat(gridView.getAdapter().getItem(position).toString());
-		} else {
-			strValue = gridView.getAdapter().getItem(position).toString();
-		}
-		editor.putString(strKey, strValue);
-
-		// Commit the edits!
+		editor.clear();
 		editor.commit();
 	}
 
-	protected void removeFavorite(int position) {
+	protected void storeData() {
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 		SharedPreferences.Editor editor = settings.edit();
 
 		String strKey = search.getText().toString();
 		String strValue = "";
 
-		if (settings.contains(strKey)) {
-			//Split up
-			String[] splitNames = settings.getString(strKey, "null").split(";"); 
-			for (int i = 0; i < splitNames.length; i++) {
-				if(splitNames[i] == gridView.getAdapter().getItem(position).toString()){
-					splitNames[i] = null;
-				}
-			}
-			
-			//Merge
-			for (int i = 0; i < splitNames.length; i++) {
-				if(splitNames[i] != null){
-					strValue += splitNames[i].concat(";");
-				}
-			}
-			
-			editor.putString(strKey, strValue);
-		} 
+		for (int i = 0; i < currentFavouritesNames.size(); i++) {
+			strValue += currentFavouritesNames.get(i) + ";";
+		}
+		Log.i("my","Storing...");
+		editor.putString(strKey, strValue);
 
 		// Commit the edits!
 		editor.commit();
-
 	}
 
 	@Override
@@ -467,11 +452,19 @@ public class MainActivity extends Activity {
 							// trim the string and replace all special html
 							// characters with
 							resultList.add(tmp.trim().replaceAll("\\W", ""));
-							resultSelected.add(false);
+
+							if (currentFavourites.contains(MainActivity.name)
+									&& currentFavouritesNames
+											.contains(resultList.getLast())) {
+								resultSelected.add(true);
+								Log.i("my","TRUE : "+ resultList.getLast().toString());
+							} else {
+								resultSelected.add(false);
+							}
 						} else
 							break;
 					} catch (StringIndexOutOfBoundsException e) {
-						Log.e("my", e.toString());
+						Log.e("my", e.getMessage());
 						break;
 					}
 				}
