@@ -10,7 +10,10 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map;
 
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -22,6 +25,7 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.support.v4.view.MenuItemCompat;
@@ -50,11 +54,11 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 
 	// TODOs
-	// Offline-Mode bzw. Suchergebnisse offline speichern (auf jeden Fall die
-	// Favoriten)
+	// Offline-Mode - Favoriten speichern
 	// Telefonbuch durchsuchen //
 	// Seite besuchen - Name muss noch überprüft werden
 	// Wartesymbol
+	// Remove Favourites + Show Stars!!!
 	// Liste/Grid (zu costum grid)//
 	// Horizontaler + Vertikaler Modus //
 	// Fehlerbenachrichtigung: http-response
@@ -66,15 +70,18 @@ public class MainActivity extends Activity {
 	// Case-sensitivity bei der vorname.com suche
 
 	private static final CursorAdapter Textadapter = null;
-	
-	public static String name = "";
-	EditText search;
-	public final LinkedList<String> resultList = new LinkedList<String>();
-	public final LinkedList<Boolean> resultSelected = new LinkedList<Boolean>();
-	public AutoCompleteTextView textView;
+
+	private static String name = "";
+	private EditText search;
+	private final LinkedList<String> resultList = new LinkedList<String>();
+	private final LinkedList<Boolean> resultSelected = new LinkedList<Boolean>();
+
+	private AutoCompleteTextView textView;
 	private GridView gridView;
-	MyAdapter adapter;
+	private MyAdapter adapter;
 	private boolean vertical = true;
+
+	public static final String PREFS_NAME = "MyKosenamePrefsFile";
 
 	@Override
 	public void onConfigurationChanged(Configuration newConfig) {
@@ -165,10 +172,16 @@ public class MainActivity extends Activity {
 			@Override
 			public void onItemClick(AdapterView<?> parent, View v,
 					int position, long id) {
-				String message = (adapter.selected.get(position)) ? (String) getResources()
-						.getString(R.string.remove_fav)
-						: (String) getResources()
-								.getString(R.string.adding_fav);
+				String message;
+				if (adapter.selected.get(position)) {
+					message = (String) getResources().getString(
+							R.string.remove_fav);
+					removeFavorite(position);
+				} else {
+					message = (String) getResources().getString(
+							R.string.adding_fav);
+					addFavorite(position);
+				}
 
 				Toast.makeText(
 						getApplicationContext(),
@@ -181,8 +194,8 @@ public class MainActivity extends Activity {
 
 		View customView = actionBar.getCustomView().findViewById(
 				R.id.searchfield);
-		
-		search = (EditText) customView ;
+
+		search = (EditText) customView;
 
 		// Get all Contacts
 		Cursor phones = getContentResolver().query(
@@ -201,18 +214,17 @@ public class MainActivity extends Activity {
 				android.R.layout.simple_list_item_1, names);
 		textView = (AutoCompleteTextView) customView;
 		textView.setThreshold(0);
-		textView.setOnTouchListener(new View.OnTouchListener() {
-			
-			@Override
-			public boolean onTouch(View v, MotionEvent event) {
-				textView.showDropDown();
-				return false;
-			}
-		});
-		
-		
+		// textView.setOnTouchListener(new View.OnTouchListener() {
+		//
+		// @Override
+		// public boolean onTouch(View v, MotionEvent event) {
+		// textView.showDropDown();
+		// return false;
+		// }
+		// });
+
 		textView.setAdapter(textAdapter);
-		
+
 		search.setOnEditorActionListener(new OnEditorActionListener() {
 
 			@Override
@@ -240,7 +252,70 @@ public class MainActivity extends Activity {
 		});
 		actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
 
+		// Load Favorites
+		// Restore preferences
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+		Map<String, ?> tmp = settings.getAll();
+
+		Iterator<?> it = tmp.entrySet().iterator();
+
+		while (it.hasNext()) {
+			Map.Entry pairs = (Map.Entry) it.next();
+			Log.i("my", pairs.getKey() + " = " + pairs.getValue());
+			it.remove(); // avoids a ConcurrentModificationException
+		}
+
 		return true;
+	}
+
+	protected void addFavorite(int position) {
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+		SharedPreferences.Editor editor = settings.edit();
+
+		String strKey = search.getText().toString();
+		String strValue;
+
+		if (settings.contains(strKey)) {
+			strValue = settings.getString(strKey, "null").concat(";")
+					.concat(gridView.getAdapter().getItem(position).toString());
+		} else {
+			strValue = gridView.getAdapter().getItem(position).toString();
+		}
+		editor.putString(strKey, strValue);
+
+		// Commit the edits!
+		editor.commit();
+	}
+
+	protected void removeFavorite(int position) {
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+		SharedPreferences.Editor editor = settings.edit();
+
+		String strKey = search.getText().toString();
+		String strValue = "";
+
+		if (settings.contains(strKey)) {
+			//Split up
+			String[] splitNames = settings.getString(strKey, "null").split(";"); 
+			for (int i = 0; i < splitNames.length; i++) {
+				if(splitNames[i] == gridView.getAdapter().getItem(position).toString()){
+					splitNames[i] = null;
+				}
+			}
+			
+			//Merge
+			for (int i = 0; i < splitNames.length; i++) {
+				if(splitNames[i] != null){
+					strValue += splitNames[i].concat(";");
+				}
+			}
+			
+			editor.putString(strKey, strValue);
+		} 
+
+		// Commit the edits!
+		editor.commit();
+
 	}
 
 	@Override
@@ -266,6 +341,12 @@ public class MainActivity extends Activity {
 		case R.id.action_visit2:
 			visitWebsite();
 			return true;
+		case R.id.action_fav:
+			showFavorites();
+			return true;
+		case R.id.action_fav2:
+			showFavorites();
+			return true;
 			// case R.id.action_settings:
 			// if (MainActivity.name == "") {
 			// goToUrl("http://vorname.com");
@@ -277,6 +358,11 @@ public class MainActivity extends Activity {
 		default:
 			return super.onOptionsItemSelected(item);
 		}
+	}
+
+	private void showFavorites() {
+		// TODO Auto-generated method stub
+
 	}
 
 	private void visitWebsite() {
@@ -373,7 +459,7 @@ public class MainActivity extends Activity {
 				while (true) {
 					try {
 
-						if ((names.indexOf(",") != -1)
+						if ((names.indexOf(",") > -1)
 								&& names.indexOf(",") + 1 < names.length()) {
 							String tmp = names.substring(0, names.indexOf(","));
 							names = new String(names.substring(

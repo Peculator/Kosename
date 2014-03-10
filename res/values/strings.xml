@@ -8,6 +8,7 @@
     <string name="app_label">AppLabel</string>
     <string name="search_hint">Hint</string>
     <string name="search_button_title">Search</string>
+    <string name="fav_button_title">Favourites</string>
     <string name="visit_button_title">Visit Website</string>
     <string name="settings_title">Settings</string>
     <string name="adding_fav">" was added to your favourites"</string>
