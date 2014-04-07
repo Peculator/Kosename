@@ -50,6 +50,7 @@ public class MainActivity extends Activity {
 	// TODOs
 	// Offline-Mode - Favoriten speichern
 	// Telefonbuch durchsuchen //
+	// REturn wenn WLan gefunden
 	// Seite besuchen - Name muss noch überprüft werden
 	// Wartesymbol
 	// Remove Favourites + Show Stars!!!
@@ -58,6 +59,7 @@ public class MainActivity extends Activity {
 	// Fehlerbenachrichtigung: http-response
 	// Alphabetisch Sortieren //
 	// Favoriten - Stern //
+	// Zurückkehren,wenn WLAn gefunden
 	// Leerzeichen am Anfang entfernen //
 	// Standard Begrüßung
 	// HTML-Code ersetzen (wird im moment entfernt)/
@@ -105,35 +107,12 @@ public class MainActivity extends Activity {
 				gridView.setNumColumns(3);
 			}
 
-			// Collections.sort(resultList, new Comparator<String>() {
-			// @Override
-			// public int compare(String o1, String o2) {
-			// return o1.compareToIgnoreCase(o2);
-			// }
-			// });
-
 			adapter.names = resultList;
 			adapter.selected = resultSelected;
 			adapter.notifyDataSetChanged();
 
-			// ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
-			// android.R.layout.simple_list_item_1,
-			// listToArray(resultList));
-			//
-			// gridView.setAdapter(adapter);
 		} else {
-			Toast.makeText(getApplicationContext(), "no name found",
-					Toast.LENGTH_SHORT).show();
 		}
-
-		// TextView mView = (TextView) findViewById(R.id.textview);
-		// String result = "";
-		// for (int i = 0; i < resultList.size(); i++) {
-		// result += (resultList.get(i)).replaceAll("\\s", "") + "\n";
-		// }
-		//
-		// mView.setText(result);
-		// mView.setMovementMethod(new ScrollingMovementMethod());
 
 		return true;
 	}
@@ -151,7 +130,7 @@ public class MainActivity extends Activity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// super.onCreate(savedInstanceState);
-		//clearSettings();
+		// clearSettings();
 
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.main, menu);
@@ -266,20 +245,21 @@ public class MainActivity extends Activity {
 
 	protected void addFavorite(int position) {
 
-		if(!currentFavourites.contains(search.getText().toString())){
+		if (!currentFavourites.contains(search.getText().toString())) {
 			currentFavourites.add(search.getText().toString());
 		}
 		currentFavouritesNames.add(gridView.getAdapter().getItem(position)
 				.toString());
 		storeData();
 	}
+
 	protected void removeFavorite(int position) {
 		currentFavouritesNames.remove(gridView.getAdapter().getItem(position)
 				.toString());
 		storeData();
 	}
-	
-	private void clearSettings(){
+
+	private void clearSettings() {
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 		SharedPreferences.Editor editor = settings.edit();
 		editor.clear();
@@ -296,7 +276,7 @@ public class MainActivity extends Activity {
 		for (int i = 0; i < currentFavouritesNames.size(); i++) {
 			strValue += currentFavouritesNames.get(i) + ";";
 		}
-		Log.i("my","Storing...");
+		Log.i("my", "Storing...");
 		editor.putString(strKey, strValue);
 
 		// Commit the edits!
@@ -408,11 +388,15 @@ public class MainActivity extends Activity {
 
 				// Makes sure that the InputStream is closed after the app is
 				// finished using it.
+			} catch (Exception e) {
+				Log.e("my", "String-ERROR " + e.getMessage().toString());
 			} finally {
 				if (is != null) {
 					is.close();
 				}
 			}
+
+			return null;
 		}
 
 		// Reads an InputStream and converts it to a String.
@@ -428,56 +412,81 @@ public class MainActivity extends Activity {
 		// onPostExecute displays the results of the AsyncTask.
 		@Override
 		protected void onPostExecute(String result) {
+			String names = "";
+			if (result != null)
+				try {
+					if (result.lastIndexOf("Spitzname") > -1) {
+						String parsenames = result.substring(
+								result.lastIndexOf("Spitzname"),
+								result.length());
 
-			try {
-				String parsenames = result.substring(
-						result.lastIndexOf("Spitzname"), result.length());
-				String names = parsenames.substring(
-						parsenames.indexOf("<p>") + 3,
-						parsenames.indexOf("</p>"));
-
-				resultList.clear();
-				resultSelected.clear();
-
-				Log.e("my", names);
-
-				while (true) {
-					try {
-
-						if ((names.indexOf(",") > -1)
-								&& names.indexOf(",") + 1 < names.length()) {
-							String tmp = names.substring(0, names.indexOf(","));
-							names = new String(names.substring(
-									names.indexOf(",") + 1, names.length()));
-							// trim the string and replace all special html
-							// characters with
-							resultList.add(tmp.trim().replaceAll("\\W", ""));
-
-							if (currentFavourites.contains(MainActivity.name)
-									&& currentFavouritesNames
-											.contains(resultList.getLast())) {
-								resultSelected.add(true);
-								Log.i("my","TRUE : "+ resultList.getLast().toString());
-							} else {
-								resultSelected.add(false);
-							}
-						} else
-							break;
-					} catch (StringIndexOutOfBoundsException e) {
-						Log.e("my", e.getMessage());
-						break;
+						if (parsenames.indexOf("<p>") > -1
+								&& parsenames.indexOf("</p>") > -1) {
+							names = parsenames.substring(
+									parsenames.indexOf("<p>") + 3,
+									parsenames.indexOf("</p>"));
+						} 
+					} else {
+						names = null;
 					}
+
+					resultList.clear();
+					resultSelected.clear();
+					refreshContent();
+
+					if (names == null) {
+						TextView mView = (TextView) findViewById(R.id.textview);
+						mView.setText("Keine Spitznamen zu "
+								+ search.getText().toString() + " gefunden");
+						refreshContent();
+					} else {
+						while (true) {
+							try {
+
+								if (names.indexOf(",") > -1) {
+									String tmp = names.substring(0,
+											names.indexOf(","));
+									names = new String(names.substring(
+											names.indexOf(",") + 1,
+											names.length()));
+									// trim the string and replace all special
+									// html
+									// characters with
+									Log.i("my", tmp);
+									resultList.add(tmp.trim().replaceAll("\\W",
+											""));
+
+									if (currentFavourites
+											.contains(MainActivity.name)
+											&& currentFavouritesNames
+													.contains(resultList
+															.getLast())) {
+										resultSelected.add(true);
+										Log.i("my", "TRUE : "
+												+ resultList.getLast()
+														.toString());
+									} else {
+										resultSelected.add(false);
+									}
+								} else
+									break;
+							} catch (StringIndexOutOfBoundsException e) {
+								Log.e("my", e.getMessage());
+								break;
+							}
+
+						}
+						refreshContent();
+					}
+				} catch (Exception e) {
+					TextView mView = (TextView) findViewById(R.id.textview);
+					mView.setText("Keine Spitznamen zu "
+							+ search.getText().toString() + " gefunden");
+					resultList.clear();
+					resultSelected.clear();
+					refreshContent();
+					Log.e("my", e.toString());
 				}
-
-				refreshContent();
-
-			} catch (Exception e) {
-				TextView mView = (TextView) findViewById(R.id.textview);
-				mView.setText("Keine Spitznamen zu "
-						+ search.getText().toString() + " gefunden");
-				Log.e("my", e.toString());
-			}
 		}
 	}
-
 }
