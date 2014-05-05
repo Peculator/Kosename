@@ -24,8 +24,6 @@ public class MyAdapter extends BaseAdapter {
 
 	public MyAdapter(Context c) {
 		context = c;
-//		bitmap = BitmapFactory.decodeResource(context.getResources(),
-//				R.drawable.ic_launcher);
 		bitmap = BitmapFactory.decodeResource(context.getResources(),
 				android.R.drawable.star_big_off);
 		bitmapSel = BitmapFactory.decodeResource(context.getResources(),

@@ -80,6 +80,11 @@ public class MainActivity extends Activity {
 	private final LinkedList<String> currentFavourites = new LinkedList<String>();
 	private final LinkedList<String> currentFavouritesNames = new LinkedList<String>();
 	public static final String PREFS_NAME = "MyKosenamePrefsFile";
+	
+	enum State {
+		INFO, RESULTS, FAVOURITES
+	}
+	protected State currentState;
 
 	@Override
 	public void onConfigurationChanged(Configuration newConfig) {
@@ -98,6 +103,7 @@ public class MainActivity extends Activity {
 
 	public boolean refreshContent() {
 
+		
 		if (resultList.size() != 0) {
 			gridView = (GridView) findViewById(R.id.grid);
 
@@ -107,6 +113,8 @@ public class MainActivity extends Activity {
 				gridView.setNumColumns(3);
 			}
 
+			if(currentState != State.RESULTS)
+				resultList.clear();
 			adapter.names = resultList;
 			adapter.selected = resultSelected;
 			adapter.notifyDataSetChanged();
@@ -172,6 +180,9 @@ public class MainActivity extends Activity {
 				R.id.searchfield);
 
 		search = (EditText) customView;
+		
+		// Set default state
+		currentState = State.INFO;
 
 		// Get all Contacts
 		Cursor phones = getContentResolver().query(
@@ -364,16 +375,17 @@ public class MainActivity extends Activity {
 
 		private String downloadUrl(String myurl) throws IOException {
 			InputStream is = null;
-			// Only display the first 500 characters of the retrieved
+			// Only display the first 5000 characters of the retrieved
 			// web page content.
 			int len = 50000;
+			System.gc();
 
 			try {
 				URL url = new URL(myurl);
 				HttpURLConnection conn = (HttpURLConnection) url
 						.openConnection();
-				conn.setReadTimeout(1000 /* milliseconds */);
-				conn.setConnectTimeout(15000 /* milliseconds */);
+				conn.setReadTimeout(2000 /* milliseconds */);
+				conn.setConnectTimeout(3000 /* milliseconds */);
 				conn.setRequestMethod("GET");
 				conn.setDoInput(true);
 				// Starts the query
@@ -415,7 +427,7 @@ public class MainActivity extends Activity {
 			String names = "";
 			if (result != null)
 				try {
-					if (result.lastIndexOf("Spitzname") > -1) {
+					if (result.contains("Spitzname")) {
 						String parsenames = result.substring(
 								result.lastIndexOf("Spitzname"),
 								result.length());
@@ -438,12 +450,14 @@ public class MainActivity extends Activity {
 						TextView mView = (TextView) findViewById(R.id.textview);
 						mView.setText("Keine Spitznamen zu "
 								+ search.getText().toString() + " gefunden");
+						currentState = State.INFO;
 						refreshContent();
 					} else {
 						while (true) {
 							try {
 
-								if (names.indexOf(",") > -1) {
+								if (names.contains(",")) {
+									currentState = State.RESULTS;
 									String tmp = names.substring(0,
 											names.indexOf(","));
 									names = new String(names.substring(
@@ -480,10 +494,9 @@ public class MainActivity extends Activity {
 					}
 				} catch (Exception e) {
 					TextView mView = (TextView) findViewById(R.id.textview);
-					mView.setText("Keine Spitznamen zu "
+					mView.setText("Keine Spitzname zu "
 							+ search.getText().toString() + " gefunden");
-					resultList.clear();
-					resultSelected.clear();
+					currentState = State.INFO;
 					refreshContent();
 					Log.e("my", e.toString());
 				}
