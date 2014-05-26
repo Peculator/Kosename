@@ -26,6 +26,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.database.Cursor;
+import android.text.Html;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -50,14 +52,7 @@ public class MainActivity extends Activity {
 	// TODOs
 	// Telefonbuch durchsuchen //
 	// Deutsch - English
-	// Seite besuchen - Name muss noch überprüft werden //
 	// Wartesymbol //
-	// Liste/Grid (zu costum grid)//
-	// Horizontaler + Vertikaler Modus //
-	// Fehlerbenachrichtigung: http-response //
-	// Alphabetisch Sortieren //
-	// Zurückkehren,wenn WLAn gefunden //
-	// Leerzeichen am Anfang entfernen //
 	// Standard Begrüßung //
 	// HTML-Code ersetzen (wird im moment entfernt)/
 
@@ -234,17 +229,29 @@ public class MainActivity extends Activity {
 		ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
 		NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
 
-		InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+		try {
+			InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 
-		inputManager.hideSoftInputFromWindow(
-				getCurrentFocus().getWindowToken(),
-				InputMethodManager.HIDE_NOT_ALWAYS);
-
+			inputManager.hideSoftInputFromWindow(
+					getCurrentFocus().getWindowToken(),
+					InputMethodManager.HIDE_NOT_ALWAYS);
+	
+		} catch (NullPointerException e) {
+		}
+		
 		if (networkInfo != null && networkInfo.isConnected()) {
 			currentState = State.SEARCHING;
 			refreshContent();
-			new DownloadWebpageTask().execute("http://www.vorname.com/name,"
-					+ MainActivity.name + ".html");
+			if (MainActivity.name != "") {
+				String html_str = TextUtils.htmlEncode(MainActivity.name);
+				new DownloadWebpageTask()
+						.execute("http://www.vorname.com/name," + html_str
+								+ ".html");
+			}
+			else{
+				currentState = State.NAMEERROR;
+				refreshContent();
+			}
 		} else {
 			Log.e("my", "no WLAN");
 			startWifi();
@@ -255,8 +262,8 @@ public class MainActivity extends Activity {
 		if (MainActivity.name == "") {
 			goToUrl("http://vorname.com");
 		} else {
-			goToUrl("http://www.vorname.com/name," + MainActivity.name
-					+ ".html");
+			String html_str = TextUtils.htmlEncode(MainActivity.name);
+			goToUrl("http://www.vorname.com/name," + html_str + ".html");
 		}
 	}
 
@@ -298,8 +305,8 @@ public class MainActivity extends Activity {
 				URL url = new URL(myurl);
 				HttpURLConnection conn = (HttpURLConnection) url
 						.openConnection();
-				conn.setReadTimeout(2000 /* milliseconds */);
-				conn.setConnectTimeout(3000 /* milliseconds */);
+				conn.setReadTimeout(4000 /* milliseconds */);
+				conn.setConnectTimeout(6000 /* milliseconds */);
 				conn.setRequestMethod("GET");
 				conn.setDoInput(true);
 				// Starts the query
@@ -395,6 +402,8 @@ public class MainActivity extends Activity {
 							} else
 								break;
 						} catch (StringIndexOutOfBoundsException e) {
+							currentState = State.NAMEERROR;
+							refreshContent();
 							break;
 						}
 
