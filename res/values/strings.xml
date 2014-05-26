@@ -11,6 +11,9 @@
     <string name="visit_button_title">Search Result on Website</string>
     <string name="visit_button_title2">Visit Website</string>
     <string name="settings_title">Settings</string>
+    <string name="state_info"> Search here</string>
+    <string name="state_name_err"> Sorry, the name you searched was not found.</string>
+    <string name="state_con_err"> Sorry, there was a connection time-out. Please try again.</string>
+    <string name="state_searching"> Searching &#8230;</string>
     
-
 </resources>

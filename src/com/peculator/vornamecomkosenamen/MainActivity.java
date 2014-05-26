@@ -49,20 +49,17 @@ public class MainActivity extends Activity {
 
 	// TODOs
 	// Telefonbuch durchsuchen //
-	// Seite besuchen - Name muss noch überprüft werden
-	// Wartesymbol
+	// Deutsch - English
+	// Seite besuchen - Name muss noch überprüft werden //
+	// Wartesymbol //
 	// Liste/Grid (zu costum grid)//
 	// Horizontaler + Vertikaler Modus //
-	// Fehlerbenachrichtigung: http-response
+	// Fehlerbenachrichtigung: http-response //
 	// Alphabetisch Sortieren //
-	// Favoriten - Stern //
-	// Zurückkehren,wenn WLAn gefunden
+	// Zurückkehren,wenn WLAn gefunden //
 	// Leerzeichen am Anfang entfernen //
-	// Standard Begrüßung
+	// Standard Begrüßung //
 	// HTML-Code ersetzen (wird im moment entfernt)/
-	// Case-sensitivity bei der vorname.com suche
-
-	private static final CursorAdapter Textadapter = null;
 
 	private static String name = "";
 	private EditText search;
@@ -74,7 +71,7 @@ public class MainActivity extends Activity {
 	private boolean vertical = true;
 
 	enum State {
-		INFO, RESULTS, ERROR
+		INFO, RESULTS, NAMEERROR, CONERROR, SEARCHING,
 	}
 
 	protected State currentState;
@@ -95,8 +92,11 @@ public class MainActivity extends Activity {
 	}
 
 	public boolean refreshContent() {
+		TextView mView = (TextView) findViewById(R.id.textview);
 
-		if (resultList.size() != 0) {
+		if (currentState == State.RESULTS) {
+			mView.setText(R.string.empty);
+
 			gridView = (GridView) findViewById(R.id.grid);
 
 			if (vertical) {
@@ -105,12 +105,25 @@ public class MainActivity extends Activity {
 				gridView.setNumColumns(3);
 			}
 
-			if (currentState != State.RESULTS)
-				resultList.clear();
 			adapter.names = resultList;
 			adapter.notifyDataSetChanged();
 
 		} else {
+			resultList.clear();
+			adapter.names = resultList;
+			adapter.notifyDataSetChanged();
+
+			if (currentState == State.NAMEERROR) {
+				mView.setText(R.string.state_name_err);
+
+			} else if (currentState == State.CONERROR) {
+				mView.setText(R.string.state_con_err);
+
+			} else if (currentState == State.INFO) {
+				mView.setText(R.string.state_info);
+			} else if (currentState == State.SEARCHING) {
+				mView.setText(R.string.state_searching);
+			}
 		}
 
 		return true;
@@ -193,6 +206,7 @@ public class MainActivity extends Activity {
 		});
 		actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
 
+		refreshContent();
 		return true;
 	}
 
@@ -201,17 +215,7 @@ public class MainActivity extends Activity {
 		// Handle presses on the action bar items
 		switch (item.getItemId()) {
 		case R.id.action_search:
-			MainActivity.name = search.getText().toString();
-			ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-			NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-			if (networkInfo != null && networkInfo.isConnected()) {
-				new DownloadWebpageTask()
-						.execute("http://www.vorname.com/name,"
-								+ MainActivity.name + ".html");
-			} else {
-				Log.e("my", "no WLAN");
-				startWifi();
-			}
+			sendRequest();
 			return true;
 		case R.id.action_visit:
 			visitWebsite();
@@ -222,6 +226,28 @@ public class MainActivity extends Activity {
 
 		default:
 			return super.onOptionsItemSelected(item);
+		}
+	}
+
+	private void sendRequest() {
+		MainActivity.name = search.getText().toString();
+		ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+		NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+
+		InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+
+		inputManager.hideSoftInputFromWindow(
+				getCurrentFocus().getWindowToken(),
+				InputMethodManager.HIDE_NOT_ALWAYS);
+
+		if (networkInfo != null && networkInfo.isConnected()) {
+			currentState = State.SEARCHING;
+			refreshContent();
+			new DownloadWebpageTask().execute("http://www.vorname.com/name,"
+					+ MainActivity.name + ".html");
+		} else {
+			Log.e("my", "no WLAN");
+			startWifi();
 		}
 	}
 
@@ -242,7 +268,10 @@ public class MainActivity extends Activity {
 	}
 
 	public void startWifi() {
-		startActivity(new Intent(WifiManager.ACTION_PICK_WIFI_NETWORK));
+		Intent intent = new Intent(WifiManager.ACTION_PICK_WIFI_NETWORK);
+		intent.putExtra("extra_prefs_show_button_bar", true);
+		intent.putExtra("wifi_enable_next_on_connect", true);
+		startActivity(intent);
 	}
 
 	private class DownloadWebpageTask extends AsyncTask<String, Void, String> {
@@ -253,7 +282,8 @@ public class MainActivity extends Activity {
 			try {
 				return downloadUrl(urls[0]);
 			} catch (IOException e) {
-				return "Unable to retrieve web page. URL may be invalid.";
+				cancel(true);
+				return null;
 			}
 		}
 
@@ -276,16 +306,24 @@ public class MainActivity extends Activity {
 				conn.connect();
 				int response = conn.getResponseCode();
 				Log.d("my", "The response is: " + response);
-				is = conn.getInputStream();
 
-				// Convert the InputStream into a string
-				String contentAsString = readIt(is, len);
-				return contentAsString;
+				if (response == 200) {
+					is = conn.getInputStream();
+
+					// Convert the InputStream into a string
+					String contentAsString = readIt(is, len);
+					return contentAsString;
+				} else if (response == 404) {
+					currentState = State.NAMEERROR;
+				} else {
+					currentState = State.CONERROR;
+					cancel(true);
+				}
 
 				// Makes sure that the InputStream is closed after the app is
 				// finished using it.
 			} catch (Exception e) {
-				Log.e("my", "String-ERROR " + e.getMessage().toString());
+				currentState = State.NAMEERROR;
 			} finally {
 				if (is != null) {
 					is.close();
@@ -308,6 +346,13 @@ public class MainActivity extends Activity {
 		// onPostExecute displays the results of the AsyncTask.
 		@Override
 		protected void onPostExecute(String result) {
+			if (result == null) {
+				currentState = State.NAMEERROR;
+				refreshContent();
+				cancel(true);
+				return;
+			}
+
 			String names = "";
 			if (result != null)
 				try {
@@ -324,52 +369,42 @@ public class MainActivity extends Activity {
 						}
 					} else {
 						names = null;
+						currentState = State.NAMEERROR;
+						refreshContent();
+						cancel(true);
+						return;
 					}
 
 					resultList.clear();
 					refreshContent();
+					while (true) {
+						try {
 
-					if (names == null) {
-						TextView mView = (TextView) findViewById(R.id.textview);
-						mView.setText("Keine Spitznamen zu "
-								+ search.getText().toString() + " gefunden");
-						currentState = State.INFO;
-						refreshContent();
-					} else {
-						while (true) {
-							try {
+							if (names.contains(",")) {
+								currentState = State.RESULTS;
+								String tmp = names.substring(0,
+										names.indexOf(","));
+								names = new String(names.substring(
+										names.indexOf(",") + 1, names.length()));
+								// trim the string and replace all special
+								// html
+								// characters with
+								resultList
+										.add(tmp.trim().replaceAll("\\W", ""));
 
-								if (names.contains(",")) {
-									currentState = State.RESULTS;
-									String tmp = names.substring(0,
-											names.indexOf(","));
-									names = new String(names.substring(
-											names.indexOf(",") + 1,
-											names.length()));
-									// trim the string and replace all special
-									// html
-									// characters with
-									Log.i("my", tmp);
-									resultList.add(tmp.trim().replaceAll("\\W",
-											""));
-
-								} else
-									break;
-							} catch (StringIndexOutOfBoundsException e) {
-								Log.e("my", e.getMessage());
+							} else
 								break;
-							}
-
+						} catch (StringIndexOutOfBoundsException e) {
+							break;
 						}
-						refreshContent();
+
 					}
-				} catch (Exception e) {
-					TextView mView = (TextView) findViewById(R.id.textview);
-					mView.setText("Keine Spitzname zu "
-							+ search.getText().toString() + " gefunden");
-					currentState = State.INFO;
 					refreshContent();
-					Log.e("my", e.toString());
+
+				} catch (Exception e) {
+					currentState = State.NAMEERROR;
+					refreshContent();
+					cancel(true);
 				}
 		}
 	}
