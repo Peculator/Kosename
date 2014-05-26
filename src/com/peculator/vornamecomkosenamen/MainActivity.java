@@ -48,12 +48,9 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 
 	// TODOs
-	// Offline-Mode - Favoriten speichern
 	// Telefonbuch durchsuchen //
-	// REturn wenn WLan gefunden
 	// Seite besuchen - Name muss noch überprüft werden
 	// Wartesymbol
-	// Remove Favourites + Show Stars!!!
 	// Liste/Grid (zu costum grid)//
 	// Horizontaler + Vertikaler Modus //
 	// Fehlerbenachrichtigung: http-response
@@ -70,20 +67,16 @@ public class MainActivity extends Activity {
 	private static String name = "";
 	private EditText search;
 	private final LinkedList<String> resultList = new LinkedList<String>();
-	private final LinkedList<Boolean> resultSelected = new LinkedList<Boolean>();
 
 	private AutoCompleteTextView textView;
 	private GridView gridView;
 	private MyAdapter adapter;
 	private boolean vertical = true;
 
-	private final LinkedList<String> currentFavourites = new LinkedList<String>();
-	private final LinkedList<String> currentFavouritesNames = new LinkedList<String>();
-	public static final String PREFS_NAME = "MyKosenamePrefsFile";
-	
 	enum State {
-		INFO, RESULTS, FAVOURITES
+		INFO, RESULTS, ERROR
 	}
+
 	protected State currentState;
 
 	@Override
@@ -103,7 +96,6 @@ public class MainActivity extends Activity {
 
 	public boolean refreshContent() {
 
-		
 		if (resultList.size() != 0) {
 			gridView = (GridView) findViewById(R.id.grid);
 
@@ -113,10 +105,9 @@ public class MainActivity extends Activity {
 				gridView.setNumColumns(3);
 			}
 
-			if(currentState != State.RESULTS)
+			if (currentState != State.RESULTS)
 				resultList.clear();
 			adapter.names = resultList;
-			adapter.selected = resultSelected;
 			adapter.notifyDataSetChanged();
 
 		} else {
@@ -152,35 +143,11 @@ public class MainActivity extends Activity {
 		adapter = new MyAdapter(this.getApplicationContext());
 		gridView.setAdapter(adapter);
 
-		gridView.setOnItemClickListener(new OnItemClickListener() {
-			@Override
-			public void onItemClick(AdapterView<?> parent, View v,
-					int position, long id) {
-				String message;
-				if (adapter.selected.get(position)) {
-					message = (String) getResources().getString(
-							R.string.remove_fav);
-					removeFavorite(position);
-				} else {
-					message = (String) getResources().getString(
-							R.string.adding_fav);
-					addFavorite(position);
-				}
-
-				Toast.makeText(
-						getApplicationContext(),
-						((TextView) v.findViewById(R.id.text)).getText()
-								+ message, Toast.LENGTH_SHORT).show();
-				adapter.selected.set(position, !adapter.selected.get(position));
-				adapter.notifyDataSetChanged();
-			}
-		});
-
 		View customView = actionBar.getCustomView().findViewById(
 				R.id.searchfield);
 
 		search = (EditText) customView;
-		
+
 		// Set default state
 		currentState = State.INFO;
 
@@ -201,14 +168,6 @@ public class MainActivity extends Activity {
 				android.R.layout.simple_list_item_1, names);
 		textView = (AutoCompleteTextView) customView;
 		textView.setThreshold(0);
-		// textView.setOnTouchListener(new View.OnTouchListener() {
-		//
-		// @Override
-		// public boolean onTouch(View v, MotionEvent event) {
-		// textView.showDropDown();
-		// return false;
-		// }
-		// });
 
 		textView.setAdapter(textAdapter);
 
@@ -234,64 +193,7 @@ public class MainActivity extends Activity {
 		});
 		actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
 
-		// Load Favorites
-		// Restore preferences
-		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-		Map<String, ?> tmp = settings.getAll();
-
-		Iterator<?> it = tmp.entrySet().iterator();
-
-		while (it.hasNext()) {
-			Map.Entry pairs = (Map.Entry) it.next();
-			currentFavourites.add(pairs.getKey().toString().replace(";", ""));
-			currentFavouritesNames.add(pairs.getValue().toString()
-					.replace(";", ""));
-			Log.i("my", pairs.getKey().toString() + " : "
-					+ pairs.getValue().toString());
-			it.remove(); // avoids a ConcurrentModificationException
-		}
-
 		return true;
-	}
-
-	protected void addFavorite(int position) {
-
-		if (!currentFavourites.contains(search.getText().toString())) {
-			currentFavourites.add(search.getText().toString());
-		}
-		currentFavouritesNames.add(gridView.getAdapter().getItem(position)
-				.toString());
-		storeData();
-	}
-
-	protected void removeFavorite(int position) {
-		currentFavouritesNames.remove(gridView.getAdapter().getItem(position)
-				.toString());
-		storeData();
-	}
-
-	private void clearSettings() {
-		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-		SharedPreferences.Editor editor = settings.edit();
-		editor.clear();
-		editor.commit();
-	}
-
-	protected void storeData() {
-		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-		SharedPreferences.Editor editor = settings.edit();
-
-		String strKey = search.getText().toString();
-		String strValue = "";
-
-		for (int i = 0; i < currentFavouritesNames.size(); i++) {
-			strValue += currentFavouritesNames.get(i) + ";";
-		}
-		Log.i("my", "Storing...");
-		editor.putString(strKey, strValue);
-
-		// Commit the edits!
-		editor.commit();
 	}
 
 	@Override
@@ -317,28 +219,10 @@ public class MainActivity extends Activity {
 		case R.id.action_visit2:
 			visitWebsite();
 			return true;
-		case R.id.action_fav:
-			showFavorites();
-			return true;
-		case R.id.action_fav2:
-			showFavorites();
-			return true;
-			// case R.id.action_settings:
-			// if (MainActivity.name == "") {
-			// goToUrl("http://vorname.com");
-			// } else {
-			// goToUrl("http://www.vorname.com/name,"
-			// + MainActivity.name + ".html");
-			// }
-			// return true;
+
 		default:
 			return super.onOptionsItemSelected(item);
 		}
-	}
-
-	private void showFavorites() {
-		// TODO Auto-generated method stub
-
 	}
 
 	private void visitWebsite() {
@@ -437,13 +321,12 @@ public class MainActivity extends Activity {
 							names = parsenames.substring(
 									parsenames.indexOf("<p>") + 3,
 									parsenames.indexOf("</p>"));
-						} 
+						}
 					} else {
 						names = null;
 					}
 
 					resultList.clear();
-					resultSelected.clear();
 					refreshContent();
 
 					if (names == null) {
@@ -470,18 +353,6 @@ public class MainActivity extends Activity {
 									resultList.add(tmp.trim().replaceAll("\\W",
 											""));
 
-									if (currentFavourites
-											.contains(MainActivity.name)
-											&& currentFavouritesNames
-													.contains(resultList
-															.getLast())) {
-										resultSelected.add(true);
-										Log.i("my", "TRUE : "
-												+ resultList.getLast()
-														.toString());
-									} else {
-										resultSelected.add(false);
-									}
 								} else
 									break;
 							} catch (StringIndexOutOfBoundsException e) {

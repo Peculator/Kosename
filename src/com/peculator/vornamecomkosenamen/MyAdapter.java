@@ -16,22 +16,14 @@ import android.widget.TextView;
 public class MyAdapter extends BaseAdapter {
 
 	LinkedList<String> names;
-	LinkedList<Boolean> selected;
 	private Context context;
 	private LayoutInflater layoutInflater;
-	private Bitmap bitmap;
-	private Bitmap bitmapSel;
 
 	public MyAdapter(Context c) {
 		context = c;
-		bitmap = BitmapFactory.decodeResource(context.getResources(),
-				android.R.drawable.star_big_off);
-		bitmapSel = BitmapFactory.decodeResource(context.getResources(),
-				android.R.drawable.star_big_on);
 		
 		layoutInflater = LayoutInflater.from(context);
 		names = new LinkedList<String>();
-		selected = new LinkedList<Boolean>();
 	}
 
 	@Override
@@ -62,14 +54,6 @@ public class MyAdapter extends BaseAdapter {
 		TextView textView = (TextView) grid.findViewById(R.id.text);
 		textView.setText(names.get(position));
 		
-		ImageView imageView = (ImageView) grid.findViewById(R.id.image);
-		
-		if(selected.get(position)== true){
-			imageView.setImageBitmap(bitmapSel);
-		}else{
-			imageView.setImageBitmap(bitmap);
-		}
-
 		return grid;
 	}
 
