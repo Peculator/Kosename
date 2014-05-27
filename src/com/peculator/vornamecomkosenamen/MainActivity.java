@@ -64,9 +64,10 @@ public class MainActivity extends Activity {
 	private GridView gridView;
 	private MyAdapter adapter;
 	private boolean vertical = true;
+	private DownloadWebpageTask myTask;
 
 	enum State {
-		INFO, RESULTS, NAMEERROR, CONERROR, PARSINGERROR, EXCEPTION, ERROR404, SEARCHING,
+		INFO, RESULTS, NAMEERROR, CONERROR, PARSINGERROR, EXCEPTION, ERROR404, NONAMEERROR, SEARCHING,
 	}
 
 	protected State currentState;
@@ -122,7 +123,10 @@ public class MainActivity extends Activity {
 			} else if (currentState == State.ERROR404) {
 				mView.setText(R.string.state_name_err404);
 
-			} else if (currentState == State.INFO) {
+			} else if (currentState == State.NONAMEERROR) {
+				mView.setText(R.string.state_no_name_err);
+
+			}else if (currentState == State.INFO) {
 				mView.setText(R.string.state_info);
 
 			} else if (currentState == State.SEARCHING) {
@@ -146,8 +150,6 @@ public class MainActivity extends Activity {
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		// super.onCreate(savedInstanceState);
-		// clearSettings();
 
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.main, menu);
@@ -210,6 +212,8 @@ public class MainActivity extends Activity {
 			}
 		});
 		actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
+		
+		myTask = new DownloadWebpageTask();
 
 		refreshContent();
 		return true;
@@ -235,8 +239,8 @@ public class MainActivity extends Activity {
 	}
 
 	private void sendRequest() {
-		if (currentState == State.SEARCHING) {
-			refreshContent();
+		if (currentState == State.SEARCHING && myTask.getStatus() == AsyncTask.Status.RUNNING) {
+			Log.i("my","still running");
 			return;
 		}
 
@@ -256,16 +260,19 @@ public class MainActivity extends Activity {
 
 		if (networkInfo != null && networkInfo.isConnected()) {
 
-			if (MainActivity.name != "" && MainActivity.name != null) {
+			if (MainActivity.name.trim().length() > 0) {
 				currentState = State.SEARCHING;
 				refreshContent();
 
 				String html_str = TextUtils.htmlEncode(MainActivity.name);
-				new DownloadWebpageTask()
-						.execute("http://www.vorname.com/name," + html_str
+				Log.i("my",html_str);
+				myTask.cancel(true);
+				myTask = new DownloadWebpageTask();
+				myTask.execute("http://www.vorname.com/name," + html_str
 								+ ".html");
-			} else {
-				currentState = State.NAMEERROR;
+				
+			} else{
+				currentState = State.NONAMEERROR;
 				refreshContent();
 			}
 		} else {
@@ -314,17 +321,17 @@ public class MainActivity extends Activity {
 			InputStream is = null;
 			// Only display the first 5000 characters of the retrieved
 			// web page content.
-			int len = 50000;
+			int len = 10000;
 			System.gc();
 
 			try {
 				URL url = new URL(myurl);
 				HttpURLConnection conn = (HttpURLConnection) url
 						.openConnection();
-				conn.setReadTimeout(4000 /* milliseconds */);
-				conn.setConnectTimeout(6000 /* milliseconds */);
+				conn.setReadTimeout(3000 /* milliseconds */);
+				conn.setConnectTimeout(5000 /* milliseconds */);
 				conn.setRequestMethod("GET");
-				conn.setDoInput(true);
+				//conn.setDoInput(true);
 				// Starts the query
 				conn.connect();
 				int response = conn.getResponseCode();
@@ -332,7 +339,6 @@ public class MainActivity extends Activity {
 
 				if (response == 200) {
 					is = conn.getInputStream();
-
 					// Convert the InputStream into a string
 					String contentAsString = readIt(is, len);
 					return contentAsString;
@@ -380,6 +386,8 @@ public class MainActivity extends Activity {
 						String parsenames = result.substring(
 								result.lastIndexOf("Spitzname"),
 								result.length());
+						result = null;
+						System.gc();
 
 						if (parsenames.indexOf("<p>") > -1
 								&& parsenames.indexOf("</p>") > -1) {
@@ -390,7 +398,6 @@ public class MainActivity extends Activity {
 					} else {
 						names = null;
 						currentState = State.CONERROR;
-						resultList.clear();
 						refreshContent();
 						System.gc();
 						return;
@@ -426,9 +433,11 @@ public class MainActivity extends Activity {
 					System.gc();
 
 				} catch (Exception e) {
+					
 					currentState = State.NAMEERROR;
 					refreshContent();
 				}
+			cancel(true);
 		}
 	}
 }
