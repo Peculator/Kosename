@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
 	private boolean vertical = true;
 
 	enum State {
-		INFO, RESULTS, NAMEERROR, CONERROR, SEARCHING,
+		INFO, RESULTS, NAMEERROR, CONERROR, PARSINGERROR, EXCEPTION, ERROR404, SEARCHING,
 	}
 
 	protected State currentState;
@@ -78,11 +78,10 @@ public class MainActivity extends Activity {
 		// Checks the orientation of the screen
 		if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
 			vertical = false;
-			refreshContent();
 		} else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
 			vertical = true;
-			refreshContent();
 		}
+		refreshContent();
 
 	}
 
@@ -114,10 +113,21 @@ public class MainActivity extends Activity {
 			} else if (currentState == State.CONERROR) {
 				mView.setText(R.string.state_con_err);
 
+			} else if (currentState == State.PARSINGERROR) {
+				mView.setText(R.string.state_parsing_err);
+
+			} else if (currentState == State.EXCEPTION) {
+				mView.setText(R.string.state_exception);
+
+			} else if (currentState == State.ERROR404) {
+				mView.setText(R.string.state_name_err404);
+
 			} else if (currentState == State.INFO) {
 				mView.setText(R.string.state_info);
+
 			} else if (currentState == State.SEARCHING) {
 				mView.setText(R.string.state_searching);
+
 			}
 		}
 
@@ -225,6 +235,11 @@ public class MainActivity extends Activity {
 	}
 
 	private void sendRequest() {
+		if (currentState == State.SEARCHING) {
+			refreshContent();
+			return;
+		}
+
 		MainActivity.name = search.getText().toString();
 		ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
 		NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
@@ -232,23 +247,24 @@ public class MainActivity extends Activity {
 		try {
 			InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 
-			inputManager.hideSoftInputFromWindow(
-					getCurrentFocus().getWindowToken(),
-					InputMethodManager.HIDE_NOT_ALWAYS);
-	
+			inputManager.hideSoftInputFromWindow(getCurrentFocus()
+					.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+
 		} catch (NullPointerException e) {
+			// There is no Window to hide
 		}
-		
+
 		if (networkInfo != null && networkInfo.isConnected()) {
-			currentState = State.SEARCHING;
-			refreshContent();
-			if (MainActivity.name != "") {
+
+			if (MainActivity.name != "" && MainActivity.name != null) {
+				currentState = State.SEARCHING;
+				refreshContent();
+
 				String html_str = TextUtils.htmlEncode(MainActivity.name);
 				new DownloadWebpageTask()
 						.execute("http://www.vorname.com/name," + html_str
 								+ ".html");
-			}
-			else{
+			} else {
 				currentState = State.NAMEERROR;
 				refreshContent();
 			}
@@ -289,7 +305,7 @@ public class MainActivity extends Activity {
 			try {
 				return downloadUrl(urls[0]);
 			} catch (IOException e) {
-				cancel(true);
+				currentState = State.EXCEPTION;
 				return null;
 			}
 		}
@@ -321,16 +337,15 @@ public class MainActivity extends Activity {
 					String contentAsString = readIt(is, len);
 					return contentAsString;
 				} else if (response == 404) {
-					currentState = State.NAMEERROR;
+					currentState = State.ERROR404;
 				} else {
 					currentState = State.CONERROR;
-					cancel(true);
 				}
 
 				// Makes sure that the InputStream is closed after the app is
 				// finished using it.
 			} catch (Exception e) {
-				currentState = State.NAMEERROR;
+				currentState = State.EXCEPTION;
 			} finally {
 				if (is != null) {
 					is.close();
@@ -353,10 +368,8 @@ public class MainActivity extends Activity {
 		// onPostExecute displays the results of the AsyncTask.
 		@Override
 		protected void onPostExecute(String result) {
-			if (result == null) {
-				currentState = State.NAMEERROR;
+			if (currentState != State.SEARCHING) {
 				refreshContent();
-				cancel(true);
 				return;
 			}
 
@@ -376,9 +389,10 @@ public class MainActivity extends Activity {
 						}
 					} else {
 						names = null;
-						currentState = State.NAMEERROR;
+						currentState = State.CONERROR;
+						resultList.clear();
 						refreshContent();
-						cancel(true);
+						System.gc();
 						return;
 					}
 
@@ -402,18 +416,18 @@ public class MainActivity extends Activity {
 							} else
 								break;
 						} catch (StringIndexOutOfBoundsException e) {
-							currentState = State.NAMEERROR;
+							currentState = State.PARSINGERROR;
 							refreshContent();
 							break;
 						}
 
 					}
 					refreshContent();
+					System.gc();
 
 				} catch (Exception e) {
 					currentState = State.NAMEERROR;
 					refreshContent();
-					cancel(true);
 				}
 		}
 	}
