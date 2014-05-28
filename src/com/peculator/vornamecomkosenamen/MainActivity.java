@@ -321,7 +321,7 @@ public class MainActivity extends Activity {
 			InputStream is = null;
 			// Only display the first 5000 characters of the retrieved
 			// web page content.
-			int len = 10000;
+			int len = 5000;
 			System.gc();
 
 			try {
