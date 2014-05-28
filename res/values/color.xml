@@ -1,4 +1,5 @@
 
     <resources>
-        <color name="bg">#111111</color>
+        <color name="bg">#FF111111</color>
+        <color name="item_bg">#AA000000</color>
     </resources>

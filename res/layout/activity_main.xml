@@ -27,11 +27,13 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:gravity="center"
-        android:horizontalSpacing="5dp"
+        android:horizontalSpacing="6dp"
         android:numColumns="2"
         android:padding="2dp"
         android:smoothScrollbar="true"
         android:stretchMode="columnWidth"
-        android:verticalSpacing="5dp" />
+        android:verticalSpacing="6dp" 
+        android:listSelector="@android:color/transparent"
+        />
 
 </RelativeLayout>

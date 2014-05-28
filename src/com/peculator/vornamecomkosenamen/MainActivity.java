@@ -1,5 +1,6 @@
 package com.peculator.vornamecomkosenamen;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -50,11 +51,8 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 
 	// TODOs
-	// Telefonbuch durchsuchen //
 	// Deutsch - English
-	// Wartesymbol //
-	// Standard Begrüßung //
-	// HTML-Code ersetzen (wird im moment entfernt)/
+	// ErrorCatching 2.0
 
 	private static String name = "";
 	private EditText search;
@@ -126,7 +124,7 @@ public class MainActivity extends Activity {
 			} else if (currentState == State.NONAMEERROR) {
 				mView.setText(R.string.state_no_name_err);
 
-			}else if (currentState == State.INFO) {
+			} else if (currentState == State.INFO) {
 				mView.setText(R.string.state_info);
 
 			} else if (currentState == State.SEARCHING) {
@@ -212,7 +210,7 @@ public class MainActivity extends Activity {
 			}
 		});
 		actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
-		
+
 		myTask = new DownloadWebpageTask();
 
 		refreshContent();
@@ -239,8 +237,9 @@ public class MainActivity extends Activity {
 	}
 
 	private void sendRequest() {
-		if (currentState == State.SEARCHING && myTask.getStatus() == AsyncTask.Status.RUNNING) {
-			Log.i("my","still running");
+		if (currentState == State.SEARCHING
+				&& myTask.getStatus() == AsyncTask.Status.RUNNING) {
+			Log.i("my", "still running");
 			return;
 		}
 
@@ -265,13 +264,13 @@ public class MainActivity extends Activity {
 				refreshContent();
 
 				String html_str = TextUtils.htmlEncode(MainActivity.name);
-				Log.i("my",html_str);
+				Log.i("my", html_str);
 				myTask.cancel(true);
 				myTask = new DownloadWebpageTask();
 				myTask.execute("http://www.vorname.com/name," + html_str
-								+ ".html");
-				
-			} else{
+						+ ".html");
+
+			} else {
 				currentState = State.NONAMEERROR;
 				refreshContent();
 			}
@@ -328,19 +327,15 @@ public class MainActivity extends Activity {
 				URL url = new URL(myurl);
 				HttpURLConnection conn = (HttpURLConnection) url
 						.openConnection();
-				conn.setReadTimeout(3000 /* milliseconds */);
-				conn.setConnectTimeout(6000 /* milliseconds */);
 				conn.setRequestMethod("GET");
-				//conn.setDoInput(true);
 				// Starts the query
 				conn.connect();
 				int response = conn.getResponseCode();
-				Log.d("my", "The response is: " + response);
 
 				if (response == 200) {
 					is = conn.getInputStream();
 					// Convert the InputStream into a string
-					String contentAsString = readIt(is, len);
+					String contentAsString = readIt(is);
 					return contentAsString;
 				} else if (response == 404) {
 					currentState = State.ERROR404;
@@ -362,13 +357,33 @@ public class MainActivity extends Activity {
 		}
 
 		// Reads an InputStream and converts it to a String.
-		public String readIt(InputStream stream, int len) throws IOException,
-				UnsupportedEncodingException {
-			Reader reader = null;
-			reader = new InputStreamReader(stream, "UTF-8");
-			char[] buffer = new char[len];
-			reader.read(buffer);
-			return new String(buffer);
+		public String readIt(InputStream stream) {
+
+			boolean started = false;
+
+			BufferedReader br = new BufferedReader(
+					new InputStreamReader(stream));
+			StringBuffer sb = new StringBuffer();
+
+			String line = "";
+			try {
+				while ((line = br.readLine()) != null) {
+
+					if (line.contains("Spitzname"))
+						started = true;
+					if (line.contains("Formen")){
+						started = false;
+						break;
+					}
+					if (started)
+						sb.append(line);
+				}
+			} catch (IOException e) {
+				currentState = State.EXCEPTION;
+				return null;
+			}
+
+			return sb.toString();
 		}
 
 		// onPostExecute displays the results of the AsyncTask.
@@ -385,7 +400,7 @@ public class MainActivity extends Activity {
 					if (result.contains("Spitzname")) {
 						String parsenames = result.substring(
 								result.lastIndexOf("Spitzname"),
-								result.length()-1);
+								result.length() - 1);
 						result = null;
 						System.gc();
 
@@ -399,7 +414,6 @@ public class MainActivity extends Activity {
 						names = null;
 						currentState = State.CONERROR;
 						refreshContent();
-						Log.i("my",result);
 						System.gc();
 						return;
 					}
@@ -415,9 +429,8 @@ public class MainActivity extends Activity {
 										names.indexOf(","));
 								names = new String(names.substring(
 										names.indexOf(",") + 1, names.length()));
-								// trim the string and replace all special
-								// html
-								// characters with
+								
+								// trim the string and replace all special html characters
 								resultList
 										.add(tmp.trim().replaceAll("\\W", ""));
 
@@ -434,11 +447,15 @@ public class MainActivity extends Activity {
 					System.gc();
 
 				} catch (Exception e) {
-					
+
 					currentState = State.NAMEERROR;
 					refreshContent();
 				}
-			cancel(true);
+			else {
+				currentState = State.NAMEERROR;
+				refreshContent();
+			}
 		}
+
 	}
 }
