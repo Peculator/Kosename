@@ -329,7 +329,7 @@ public class MainActivity extends Activity {
 				HttpURLConnection conn = (HttpURLConnection) url
 						.openConnection();
 				conn.setReadTimeout(3000 /* milliseconds */);
-				conn.setConnectTimeout(5000 /* milliseconds */);
+				conn.setConnectTimeout(6000 /* milliseconds */);
 				conn.setRequestMethod("GET");
 				//conn.setDoInput(true);
 				// Starts the query
@@ -385,7 +385,7 @@ public class MainActivity extends Activity {
 					if (result.contains("Spitzname")) {
 						String parsenames = result.substring(
 								result.lastIndexOf("Spitzname"),
-								result.length());
+								result.length()-1);
 						result = null;
 						System.gc();
 
@@ -399,6 +399,7 @@ public class MainActivity extends Activity {
 						names = null;
 						currentState = State.CONERROR;
 						refreshContent();
+						Log.i("my",result);
 						System.gc();
 						return;
 					}
