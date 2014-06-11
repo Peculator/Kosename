@@ -4,15 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Map;
 
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -24,12 +18,9 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.database.Cursor;
-import android.text.Html;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -37,22 +28,17 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
-import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
-import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
 	// TODOs
 	// Deutsch - English
-	// ErrorCatching 2.0
 
 	private static String name = "";
 	private EditText search;
@@ -239,7 +225,6 @@ public class MainActivity extends Activity {
 	private void sendRequest() {
 		if (currentState == State.SEARCHING
 				&& myTask.getStatus() == AsyncTask.Status.RUNNING) {
-			Log.i("my", "still running");
 			return;
 		}
 
@@ -254,7 +239,7 @@ public class MainActivity extends Activity {
 					.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
 
 		} catch (NullPointerException e) {
-			// There is no Window to hide
+			// There is no Window to hide --> Resume
 		}
 
 		if (networkInfo != null && networkInfo.isConnected()) {
@@ -264,7 +249,7 @@ public class MainActivity extends Activity {
 				refreshContent();
 
 				String html_str = TextUtils.htmlEncode(MainActivity.name);
-				Log.i("my", html_str);
+
 				myTask.cancel(true);
 				myTask = new DownloadWebpageTask();
 				myTask.execute("http://www.vorname.com/name," + html_str
@@ -275,7 +260,6 @@ public class MainActivity extends Activity {
 				refreshContent();
 			}
 		} else {
-			Log.e("my", "no WLAN");
 			startWifi();
 		}
 	}
@@ -318,9 +302,6 @@ public class MainActivity extends Activity {
 
 		private String downloadUrl(String myurl) throws IOException {
 			InputStream is = null;
-			// Only display the first 5000 characters of the retrieved
-			// web page content.
-			int len = 5000;
 			System.gc();
 
 			try {
