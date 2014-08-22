@@ -51,7 +51,7 @@ public class MainActivity extends Activity {
 	private DownloadWebpageTask myTask;
 
 	enum State {
-		INFO, RESULTS, NAMEERROR, CONERROR, PARSINGERROR, EXCEPTION, ERROR404, NONAMEERROR, SEARCHING,
+		INFO, RESULTS, NAMEERROR, CONERROR, PARSINGERROR, EXCEPTION, ERROR404, NONAMEERROR, SEARCHING, NOINET,
 	}
 
 	protected State currentState;
@@ -115,6 +115,10 @@ public class MainActivity extends Activity {
 
 			} else if (currentState == State.SEARCHING) {
 				mView.setText(R.string.state_searching);
+
+			}
+			else if (currentState == State.NOINET) {
+				mView.setText(R.string.state_noInet);
 
 			}
 		}
@@ -229,6 +233,7 @@ public class MainActivity extends Activity {
 		}
 
 		MainActivity.name = search.getText().toString();
+		
 		ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
 		NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
 
@@ -260,7 +265,8 @@ public class MainActivity extends Activity {
 				refreshContent();
 			}
 		} else {
-			startWifi();
+			currentState = State.NOINET;
+			refreshContent();
 		}
 	}
 
@@ -280,12 +286,6 @@ public class MainActivity extends Activity {
 		startActivity(launchBrowser);
 	}
 
-	public void startWifi() {
-		Intent intent = new Intent(WifiManager.ACTION_PICK_WIFI_NETWORK);
-		intent.putExtra("extra_prefs_show_button_bar", true);
-		intent.putExtra("wifi_enable_next_on_connect", true);
-		startActivity(intent);
-	}
 
 	private class DownloadWebpageTask extends AsyncTask<String, Void, String> {
 		@Override

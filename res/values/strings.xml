@@ -12,6 +12,7 @@
     <string name="visit_button_title2">Visit Website</string>
     <string name="settings_title">Settings</string>
     <string name="state_info"> Search here</string>
+    <string name="state_noInet"> You don\'t have an internet connection.</string>
     <string name="state_name_err"> Sorry, the name you searched was not found.</string>
     <string name="state_no_name_err"> Please enter a name</string>
     <string name="state_name_err404"> 404, Sorry, the name you searched was not found.</string>
