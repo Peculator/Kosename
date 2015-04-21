@@ -11,7 +11,6 @@ import java.util.LinkedList;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.provider.ContactsContract;
 import android.app.ActionBar;
@@ -116,8 +115,7 @@ public class MainActivity extends Activity {
 			} else if (currentState == State.SEARCHING) {
 				mView.setText(R.string.state_searching);
 
-			}
-			else if (currentState == State.NOINET) {
+			} else if (currentState == State.NOINET) {
 				mView.setText(R.string.state_noInet);
 
 			}
@@ -172,6 +170,7 @@ public class MainActivity extends Activity {
 		phones.close();
 
 		String[] names = listToArray(myContacts);
+
 		ArrayAdapter<String> textAdapter = new ArrayAdapter<String>(this,
 				android.R.layout.simple_list_item_1, names);
 		textView = (AutoCompleteTextView) customView;
@@ -233,7 +232,7 @@ public class MainActivity extends Activity {
 		}
 
 		MainActivity.name = search.getText().toString();
-		
+
 		ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
 		NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
 
@@ -285,7 +284,6 @@ public class MainActivity extends Activity {
 		launchBrowser.addCategory(Intent.CATEGORY_BROWSABLE);
 		startActivity(launchBrowser);
 	}
-
 
 	private class DownloadWebpageTask extends AsyncTask<String, Void, String> {
 		@Override
@@ -339,7 +337,6 @@ public class MainActivity extends Activity {
 
 		// Reads an InputStream and converts it to a String.
 		public String readIt(InputStream stream) {
-
 			boolean started = false;
 
 			BufferedReader br = new BufferedReader(
@@ -349,10 +346,9 @@ public class MainActivity extends Activity {
 			String line = "";
 			try {
 				while ((line = br.readLine()) != null) {
-
-					if (line.contains("Spitzname"))
+					if (line.contains("Spitznamen & Kosenamen"))
 						started = true;
-					if (line.contains("Formen")){
+					if (line.contains("trenner40") && started) {
 						started = false;
 						break;
 					}
@@ -376,21 +372,11 @@ public class MainActivity extends Activity {
 			}
 
 			String names = "";
-			if (result != null)
+			if (result != null) {
 				try {
-					if (result.contains("Spitzname")) {
-						String parsenames = result.substring(
-								result.lastIndexOf("Spitzname"),
-								result.length() - 1);
-						result = null;
-						System.gc();
 
-						if (parsenames.indexOf("<p>") > -1
-								&& parsenames.indexOf("</p>") > -1) {
-							names = parsenames.substring(
-									parsenames.indexOf("<p>") + 3,
-									parsenames.indexOf("</p>"));
-						}
+					if (result.contains("mr5")) {
+						result = result.substring(result.indexOf("mr5"));
 					} else {
 						names = null;
 						currentState = State.CONERROR;
@@ -398,6 +384,17 @@ public class MainActivity extends Activity {
 						System.gc();
 						return;
 					}
+					
+					while (true) {
+						if (result.contains("mr5")
+								&& result.contains("</span>")) {
+							names += result.substring(result.indexOf("mr5")+5,result.indexOf("</span>")) + ",";
+							result = result.substring(result.indexOf("</span>")+7);
+						} else {
+							break;
+						}
+					}
+					System.gc();
 
 					resultList.clear();
 					refreshContent();
@@ -410,8 +407,9 @@ public class MainActivity extends Activity {
 										names.indexOf(","));
 								names = new String(names.substring(
 										names.indexOf(",") + 1, names.length()));
-								
-								// trim the string and replace all special html characters
+
+								// trim the string and replace all special html
+								// characters
 								resultList
 										.add(tmp.trim().replaceAll("\\W", ""));
 
@@ -422,17 +420,20 @@ public class MainActivity extends Activity {
 							refreshContent();
 							break;
 						}
+						catch(Exception e){
+							e.printStackTrace();
+						}
 
 					}
 					refreshContent();
 					System.gc();
 
 				} catch (Exception e) {
-
+					e.printStackTrace();
 					currentState = State.NAMEERROR;
 					refreshContent();
 				}
-			else {
+			} else {
 				currentState = State.NAMEERROR;
 				refreshContent();
 			}
